@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corazón 3D - Nicole Alejandra Valencia Rosales</title>
+    <style>
+        body {
+            background-color: #050508;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            filter: drop-shadow(0 0 14px rgba(255, 35, 95, 0.8));
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="heartCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = 650;
+        canvas.height = 650;
+
+        // Texto que formará el corazón
+        const text = "NICOLE ALEJANDRA VALENCIA ROSALES ";
+        const points = [];
+        let charIndex = 0;
+        
+        // Generar los puntos 3D siguiendo secuencialmente las letras del nombre
+        for (let layer = -15; layer <= 15; layer += 2.5) {
+            let scale = Math.cos((layer / 15) * (Math.PI / 2)); // Grosor 3D cónico
+            
+            for (let t = 0; t < Math.PI * 2; t += 0.07) {
+                // Ecuación paramétrica de corazón simétrico perfecto
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                let z = layer;
+
+                // Tomar el siguiente carácter del nombre
+                let char = text[charIndex % text.length];
+                charIndex++;
+
+                points.push({
+                    x: x * 12.5 * scale,
+                    y: y * 12.5 * scale,
+                    z: z * 6.5,
+                    char: char
+                });
+            }
+        }
+
+        let angleY = 0;
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Proyección y rotación en 3D
+            let projectedPoints = points.map(p => {
+                let rx = p.x * Math.cos(angleY) + p.z * Math.sin(angleY);
+                let rz = -p.x * Math.sin(angleY) + p.z * Math.cos(angleY);
+                let ry = p.y;
+
+                let distance = 400;
+                let fov = distance / (distance + rz);
+
+                return {
+                    x: canvas.width / 2 + rx * fov,
+                    y: canvas.height / 2 + ry * fov,
+                    scale: fov,
+                    rz: rz,
+                    char: p.char
+                };
+            });
+
+            // Ordenar por Z-Buffer para profundidad realista
+            projectedPoints.sort((a, b) => b.rz - a.rz);
+
+            // Renderizado de las letras
+            projectedPoints.forEach(p => {
+                let size = Math.max(7, 13 * p.scale);
+                ctx.font = `bold ${size}px 'Courier New', monospace`;
+
+                let alpha = (p.rz + 200) / 400;
+                alpha = Math.max(0.25, Math.min(1, alpha));
+
+                if (p.rz < -20) {
+                    ctx.fillStyle = `rgba(180, 0, 60, ${alpha})`;
+                } else if (p.rz < 40) {
+                    ctx.fillStyle = `rgba(255, 40, 100, ${alpha})`;
+                } else {
+                    ctx.fillStyle = `rgba(255, 190, 215, ${alpha})`;
+                }
+
+                ctx.fillText(p.char, p.x, p.y);
+            });
+
+            angleY += 0.02; // Velocidad del giro
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
